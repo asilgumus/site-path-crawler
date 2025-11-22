@@ -20,8 +20,8 @@ def styl(msg, fg=Fore.GREEN, bold=False):
 
 def banner(example_domain):
     print(styl("╔══════════════════════════════════════════════════════╗", Fore.GREEN, True))
-    print(styl("║", Fore.GREEN, True) + "  " + styl("XJR PATH CRAWLER", Fore.WHITE, True) + "  " + styl("by xjr", Fore.GREEN))
-    print(styl("║", Fore.GREEN, True) + "  " + styl("Örnek:", Fore.CYAN) + " " + styl(example_domain, Fore.YELLOW, True))
+    print(styl("║", Fore.GREEN, True) + "  " + styl("PATH CRAWLER", Fore.WHITE, True))
+    print(styl("║", Fore.GREEN, True) + "  " + styl("Example:", Fore.CYAN) + " " + styl(example_domain, Fore.YELLOW, True))
     print(styl("╚══════════════════════════════════════════════════════╝", Fore.GREEN, True))
     print()
 
@@ -42,9 +42,9 @@ def color_print(msg, level="info", end="\n"):
 def ensure_dir(path):
     if not os.path.exists(path):
         os.makedirs(path)
-        color_print(f"Çıktı dizini oluşturuldu: {path}", "succ")
+        color_print(f"Output directory created: {path}", "succ")
     else:
-        color_print(f"Çıktı dizini zaten var: {path}", "info")
+        color_print(f"Output directory already exists: {path}", "info")
 
 def sanitize_filename(path):
     if not path or path == "/":
@@ -80,7 +80,7 @@ def fetch_html(url):
         if "text/html" not in ctype and "application/xhtml+xml" not in ctype:
             return None, r.status_code
         return r.text, r.status_code
-    except Exception as e:
+    except Exception:
         return None, None
 
 def extract_links(html, base_url):
@@ -116,60 +116,73 @@ def crawl(start_url, output_dir, max_pages=MAX_PAGES, delay=DELAY_BETWEEN_REQS):
     stop_event = threading.Event()
     spinner_thread = threading.Thread(target=spinner, args=(stop_event, f"Target: {base_netloc}"))
     spinner_thread.start()
+
     try:
         while q and saved_count < max_pages:
             url = q.popleft()
             queued.discard(url)
             if url in visited:
                 continue
-            color_print(f"Ziyaret ediliyor: {url}", "info")
+            color_print(f"Visiting: {url}", "info")
             html, status = fetch_html(url)
             visited.add(url)
+
             if html:
                 path = urlparse(url).path
                 filename = sanitize_filename(path)
                 filepath = os.path.join(output_dir, filename)
                 final_path = filepath
                 idx = 1
+
                 while os.path.exists(final_path):
                     name, ext = os.path.splitext(filepath)
                     final_path = f"{name}_{idx}{ext}"
                     idx += 1
+
                 try:
                     with open(final_path, "w", encoding="utf-8") as f:
                         f.write(html)
-                    color_print(f"Kaydedildi: {final_path}", "succ")
+                    color_print(f"Saved: {final_path}", "succ")
                     saved_count += 1
                     pbar.update(1)
                 except Exception as e:
-                    color_print(f"Dosya kaydedilemedi: {final_path} -> {e}", "error")
+                    color_print(f"File could not be saved: {final_path} -> {e}", "error")
+
                 links = extract_links(html, url)
-                color_print(f"{len(links)} link bulundu.", "debug")
+                color_print(f"{len(links)} links found.", "debug")
+
                 for link in links:
                     if urlparse(link).netloc != base_netloc:
                         continue
                     if link not in visited and link not in queued:
                         q.append(link)
                         queued.add(link)
+
             else:
-                color_print(f"HTML alınamadı veya HTML değil: {url} (status: {status})", "warn")
+                color_print(f"HTML could not be retrieved or is not valid HTML: {url} (status: {status})", "warn")
+
             time.sleep(delay)
+
     finally:
         stop_event.set()
         spinner_thread.join()
         pbar.close()
-    color_print(f"Taramada kaydedilen sayfa sayısı: {saved_count}", "succ")
-    color_print("Tarama tamamlandı. Hoşçakalın! ✨", "info")
+
+    color_print(f"Total saved pages: {saved_count}", "succ")
+    color_print("Crawl completed. Goodbye! ✨", "info")
     return visited
 
 if __name__ == "__main__":
     example = "https://instagram.com"
     banner(example)
-    user_domain = input(styl("Hedef domain veya URL girin (örnek: " + example + "): ", Fore.CYAN))
+    user_domain = input(styl("Enter target domain or URL (example: " + example + "): ", Fore.CYAN))
+
     if not user_domain:
-        color_print("Domain girilmedi. Çıkılıyor.", "error")
+        color_print("No domain entered. Exiting.", "error")
         sys.exit(1)
-    user_output = input(styl("Kaydedilecek dizin adı girin (örnek: output): ", Fore.CYAN)).strip()
+
+    user_output = input(styl("Enter output directory name (example: output): ", Fore.CYAN)).strip()
     if not user_output:
         user_output = "output"
+
     crawl(user_domain, user_output)

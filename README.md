@@ -1,5 +1,5 @@
-# XJR Site Crawler
-A modern, path-based web crawler for static site archiving — by xjr
+# Site Crawler
+A modern, path-based web crawler for static site archiving
 
 ---
 
@@ -10,7 +10,7 @@ XJR Site Crawler recursively collects HTML pages from a given domain or URL and 
 
 ## Installation
 ```bash
-git clone https://github.com/YOUR_USERNAME/site-path-crawler.git
+git clone https://github.com/asilgumus/site-path-crawler.git
 cd site-path-crawler
 pip install requests beautifulsoup4 tqdm colorama
 
